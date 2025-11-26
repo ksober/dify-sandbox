@@ -9,20 +9,15 @@ import (
 	"github.com/langgenius/dify-sandbox/internal/types"
 )
 
-type RunCodeResponse struct {
-	Stderr string `json:"error"`
-	Stdout string `json:"stdout"`
-}
-
 func RunPython3Code(code string, preload string, options *runner_types.RunnerOptions) *types.DifySandboxResponse {
 	if err := checkOptions(options); err != nil {
 		return types.ErrorResponse(-400, err.Error())
 	}
 
 	if !static.GetDifySandboxGlobalConfigurations().EnablePreload {
-	    preload = ""
+		preload = ""
 	}
-	
+
 	timeout := time.Duration(
 		static.GetDifySandboxGlobalConfigurations().WorkerTimeout * int(time.Second),
 	)
@@ -86,4 +81,82 @@ func UpdateDependencies() *types.DifySandboxResponse {
 	}
 
 	return types.SuccessResponse(&UpdateDependenciesResponse{})
+}
+
+// SubmitPython3Task 提交Python3代码执行任务（异步）
+func SubmitPython3Task(code string, preload string, options *runner_types.RunnerOptions) *types.DifySandboxResponse {
+	if err := checkOptions(options); err != nil {
+		return types.ErrorResponse(-400, err.Error())
+	}
+
+	// 创建任务
+	taskManager := GetTaskManager()
+	task := taskManager.CreateTask()
+
+	// 异步执行
+	go runPython3TaskAsync(task.ID, code, preload, options)
+
+	return types.SuccessResponse(&types.SubmitTaskResponse{
+		TaskID: task.ID,
+	})
+}
+
+// runPython3TaskAsync 异步执行Python3代码
+func runPython3TaskAsync(taskID string, code string, preload string, options *runner_types.RunnerOptions) {
+	taskManager := GetTaskManager()
+
+	// 更新状态为运行中
+	taskManager.UpdateTaskStatus(taskID, types.TaskStatusRunning)
+
+	if !static.GetDifySandboxGlobalConfigurations().EnablePreload {
+		preload = ""
+	}
+
+	timeout := time.Duration(
+		static.GetDifySandboxGlobalConfigurations().WorkerTimeout * int(time.Second),
+	)
+
+	runner := python.PythonRunner{}
+	stdout, stderr, done, err := runner.Run(
+		code, timeout, nil, preload, options,
+	)
+
+	if err != nil {
+		taskManager.UpdateTaskStatus(taskID, types.TaskStatusFailed)
+		taskManager.UpdateTaskResult(taskID, "", "", err.Error())
+		return
+	}
+
+	stdout_str := ""
+	stderr_str := ""
+
+	defer close(done)
+	defer close(stdout)
+	defer close(stderr)
+
+	for {
+		select {
+		case <-done:
+			taskManager.UpdateTaskStatus(taskID, types.TaskStatusCompleted)
+			taskManager.UpdateTaskResult(taskID, stdout_str, stderr_str, "")
+			return
+		case out := <-stdout:
+			stdout_str += string(out)
+		case err := <-stderr:
+			stderr_str += string(err)
+		}
+	}
+}
+
+// QueryTask 查询任务状态
+func QueryTask(taskID string) *types.DifySandboxResponse {
+	taskManager := GetTaskManager()
+	task, exists := taskManager.GetTask(taskID)
+	if !exists {
+		return types.ErrorResponse(-404, "task not found")
+	}
+
+	return types.SuccessResponse(&types.QueryTaskResponse{
+		Task: task,
+	})
 }

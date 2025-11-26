@@ -40,6 +40,22 @@ func (p *PythonRunner) Run(
 		return nil, nil, nil, err
 	}
 
+	// decide the chroot root for this run (default to LIB_PATH)
+	runningRoot := LIB_PATH
+	if options != nil && options.RootPath != "" {
+		runningRoot = options.RootPath
+	}
+
+	// prepare python.so and runtime files into the runningRoot if it's custom
+	if runningRoot != LIB_PATH {
+		if err := writeLibBinaryTo(runningRoot); err != nil {
+			return nil, nil, nil, err
+		}
+		if err := PreparePythonDependenciesEnvTo(runningRoot); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
 	// capture the output
 	output_handler := runner.NewOutputCaptureRunner()
 	output_handler.SetTimeout(timeout)
@@ -52,11 +68,11 @@ func (p *PythonRunner) Run(
 	cmd := exec.Command(
 		configuration.PythonPath,
 		untrusted_code_path,
-		LIB_PATH,
+		runningRoot,
 		key,
 	)
 	cmd.Env = []string{}
-	cmd.Dir = LIB_PATH
+	cmd.Dir = runningRoot
 
 	if configuration.Proxy.Socks5 != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("HTTPS_PROXY=%s", configuration.Proxy.Socks5))

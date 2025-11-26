@@ -62,6 +62,14 @@ func releaseLibBinary(force_remove_old_lib bool) {
 	}
 }
 
+// writeLibBinaryTo writes the embedded python.so into the designated destination directory.
+func writeLibBinaryTo(dest string) error {
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path.Join(dest, LIB_NAME), python_lib, 0755)
+}
+
 func checkLibAvaliable() bool {
 	if _, err := os.Stat(path.Join(LIB_PATH, LIB_NAME)); err != nil {
 		return false

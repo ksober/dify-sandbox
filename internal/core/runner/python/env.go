@@ -49,3 +49,40 @@ func PreparePythonDependenciesEnv() error {
 
 	return err
 }
+
+// PreparePythonDependenciesEnvTo prepares necessary python libraries and runtime files
+// into the provided destination root path. It mirrors PreparePythonDependenciesEnv
+// but allows a custom destination instead of the default LIB_PATH.
+func PreparePythonDependenciesEnvTo(dest string) error {
+	config := static.GetDifySandboxGlobalConfigurations()
+
+	runner := runner.TempDirRunner{}
+	err := runner.WithTempDir("/", []string{}, func(root_path string) error {
+		if err := os.WriteFile(path.Join(root_path, "env.sh"), []byte(env_script), 0755); err != nil {
+			return err
+		}
+
+		for _, lib_path := range config.PythonLibPaths {
+			if _, err := os.Stat(lib_path); err != nil {
+				log.Warn("python lib path %s is not available", lib_path)
+				continue
+			}
+			exec_cmd := exec.Command(
+				"bash",
+				path.Join(root_path, "env.sh"),
+				lib_path,
+				dest,
+			)
+			exec_cmd.Stderr = os.Stderr
+
+			if err := exec_cmd.Run(); err != nil {
+				return err
+			}
+		}
+
+		os.RemoveAll(root_path)
+		return nil
+	})
+
+	return err
+}

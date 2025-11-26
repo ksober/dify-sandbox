@@ -1,10 +1,11 @@
 package controller
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/langgenius/dify-sandbox/internal/middleware"
 	"github.com/langgenius/dify-sandbox/internal/static"
-	"net/http"
 )
 
 func Setup(Router *gin.Engine) {
@@ -36,11 +37,23 @@ func InitDependencyRouter(Router *gin.RouterGroup) {
 func InitRunRouter(Router *gin.RouterGroup) {
 	runRouter := Router.Group("")
 	{
+		// 同步执行接口（保留向后兼容）
 		runRouter.POST(
 			"run",
 			middleware.MaxRequest(static.GetDifySandboxGlobalConfigurations().MaxRequests),
 			middleware.MaxWorker(static.GetDifySandboxGlobalConfigurations().MaxWorkers),
 			RunSandboxController,
 		)
+		// 异步执行接口
+		taskRouter := Router.Group("tasks")
+		{
+			taskRouter.POST(
+				"",
+				middleware.MaxRequest(static.GetDifySandboxGlobalConfigurations().MaxRequests),
+				middleware.MaxWorker(static.GetDifySandboxGlobalConfigurations().MaxWorkers),
+				SubmitTaskController,
+			)
+			taskRouter.GET(":task_id", QueryTaskController)
+		}
 	}
 }

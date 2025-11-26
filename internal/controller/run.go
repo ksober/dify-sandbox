@@ -13,15 +13,18 @@ func RunSandboxController(c *gin.Context) {
 		Code          string `json:"code" form:"code" binding:"required"`
 		Preload       string `json:"preload" form:"preload"`
 		EnableNetwork bool   `json:"enable_network" form:"enable_network"`
+		RootPath      string `json:"root_path" form:"root_path"`
 	}) {
 		switch req.Language {
 		case "python3":
 			c.JSON(200, service.RunPython3Code(req.Code, req.Preload, &runner_types.RunnerOptions{
 				EnableNetwork: req.EnableNetwork,
+				RootPath:      req.RootPath,
 			}))
 		case "nodejs":
 			c.JSON(200, service.RunNodeJsCode(req.Code, req.Preload, &runner_types.RunnerOptions{
 				EnableNetwork: req.EnableNetwork,
+				RootPath:      req.RootPath,
 			}))
 		default:
 			c.JSON(400, types.ErrorResponse(-400, "unsupported language"))
@@ -66,4 +69,41 @@ func RefreshDependencies(c *gin.Context) {
 			c.JSON(400, types.ErrorResponse(-400, "unsupported language"))
 		}
 	})
+}
+
+// SubmitTaskController 提交代码执行任务（异步）
+func SubmitTaskController(c *gin.Context) {
+	BindRequest(c, func(req struct {
+		Language      string `json:"language" form:"language" binding:"required"`
+		Code          string `json:"code" form:"code" binding:"required"`
+		Preload       string `json:"preload" form:"preload"`
+		EnableNetwork bool   `json:"enable_network" form:"enable_network"`
+		RootPath      string `json:"root_path" form:"root_path"`
+	}) {
+		switch req.Language {
+		case "python3":
+			c.JSON(200, service.SubmitPython3Task(req.Code, req.Preload, &runner_types.RunnerOptions{
+				EnableNetwork: req.EnableNetwork,
+				RootPath:      req.RootPath,
+			}))
+		case "nodejs":
+			c.JSON(200, service.SubmitNodeJsTask(req.Code, req.Preload, &runner_types.RunnerOptions{
+				EnableNetwork: req.EnableNetwork,
+				RootPath:      req.RootPath,
+			}))
+		default:
+			c.JSON(400, types.ErrorResponse(-400, "unsupported language"))
+		}
+	})
+}
+
+// QueryTaskController 查询任务状态
+func QueryTaskController(c *gin.Context) {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		c.JSON(400, types.ErrorResponse(-400, "task_id is required"))
+		return
+	}
+
+	c.JSON(200, service.QueryTask(taskID))
 }
