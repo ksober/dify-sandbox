@@ -19,6 +19,11 @@ func RunPython3Code(code string, preload string, options *runner_types.RunnerOpt
 		return types.ErrorResponse(-400, err.Error())
 	}
 
+	// required params validation for python
+	if options == nil || options.TaskID == "" {
+		return types.ErrorResponse(-400, "task_id is required")
+	}
+
 	if !static.GetDifySandboxGlobalConfigurations().EnablePreload {
 	    preload = ""
 	}

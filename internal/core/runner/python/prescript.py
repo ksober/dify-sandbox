@@ -24,6 +24,8 @@ key = sys.argv[2]
 if not key:
     exit(-1)
 
+workdir = sys.argv[3] if len(sys.argv) >= 4 else None
+
 from base64 import b64decode
 key = b64decode(key)
 
@@ -32,6 +34,14 @@ os.chdir(running_path)
 {{preload}}
 
 lib.DifySeccomp({{uid}}, {{gid}}, {{enable_network}})
+
+# switch to per-task workdir after chroot/seccomp
+if workdir:
+    try:
+        os.makedirs(workdir, exist_ok=True)
+        os.chdir(workdir)
+    except Exception:
+        pass
 
 code = b64decode("{{code}}")
 

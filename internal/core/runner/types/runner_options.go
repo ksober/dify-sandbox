@@ -9,6 +9,7 @@ type Dependency struct {
 
 type RunnerOptions struct {
 	EnableNetwork bool `json:"enable_network"`
+	TaskID        string `json:"task_id"`
 }
 
 func (r *RunnerOptions) Json() string {

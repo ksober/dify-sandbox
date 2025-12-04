@@ -49,11 +49,16 @@ func (p *PythonRunner) Run(
 	})
 
 	// create a new process
+	workdir := ""
+	if options != nil && options.TaskID != "" {
+		workdir = fmt.Sprintf("/tmp/%s", options.TaskID)
+	}
 	cmd := exec.Command(
 		configuration.PythonPath,
 		untrusted_code_path,
 		LIB_PATH,
 		key,
+		workdir,
 	)
 	cmd.Env = []string{}
 	cmd.Dir = LIB_PATH
@@ -159,6 +164,13 @@ func (p *PythonRunner) InitializeEnvironment(code string, preload string, option
 	err = os.WriteFile(untrusted_code_path, []byte(code), 0755)
 	if err != nil {
 		return "", "", err
+	}
+
+	// ensure per-task workdir exists and is owned by sandbox user
+	if options != nil && options.TaskID != "" {
+		workdir := path.Join(LIB_PATH, "tmp", options.TaskID)
+		_ = os.MkdirAll(workdir, 0770)
+		_ = os.Chown(workdir, static.SANDBOX_USER_UID, static.SANDBOX_GROUP_ID)
 	}
 
 	return untrusted_code_path, encoded_key, nil

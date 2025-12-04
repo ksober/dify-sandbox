@@ -13,11 +13,13 @@ func RunSandboxController(c *gin.Context) {
 		Code          string `json:"code" form:"code" binding:"required"`
 		Preload       string `json:"preload" form:"preload"`
 		EnableNetwork bool   `json:"enable_network" form:"enable_network"`
+		TaskID        string `json:"task_id" form:"task_id"`
 	}) {
 		switch req.Language {
 		case "python3":
 			c.JSON(200, service.RunPython3Code(req.Code, req.Preload, &runner_types.RunnerOptions{
 				EnableNetwork: req.EnableNetwork,
+				TaskID:        req.TaskID,
 			}))
 		case "nodejs":
 			c.JSON(200, service.RunNodeJsCode(req.Code, req.Preload, &runner_types.RunnerOptions{
