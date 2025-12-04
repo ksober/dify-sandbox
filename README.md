@@ -12,8 +12,8 @@ DifySandbox currently only supports Linux, as it's designed for docker container
 
 ### Steps
 1. Clone the repository using `git clone https://github.com/langgenius/dify-sandbox` and navigate to the project directory.
-2. Run ./install.sh to install the necessary dependencies.
-3. Run ./build/build_[amd64|arm64].sh to build the sandbox binary.
+2. Run ƒ to install the necessary dependencies.
+3. Run ./build/build_arm64.sh to build the sandbox binary.
 4. Run ./main to start the server.
 
 If you want to debug the server, firstly use build script to build the sandbox library binaries, then debug as you want with your IDE.

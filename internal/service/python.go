@@ -7,6 +7,7 @@ import (
 	runner_types "github.com/langgenius/dify-sandbox/internal/core/runner/types"
 	"github.com/langgenius/dify-sandbox/internal/static"
 	"github.com/langgenius/dify-sandbox/internal/types"
+	"github.com/langgenius/dify-sandbox/internal/utils/log"
 )
 
 type RunCodeResponse struct {
@@ -15,6 +16,12 @@ type RunCodeResponse struct {
 }
 
 func RunPython3Code(code string, preload string, options *runner_types.RunnerOptions) *types.DifySandboxResponse {
+	log.Info("进入 RunPython3Code: 启用网络=%v, task_id=%s", options != nil && options.EnableNetwork, func() string {
+		if options == nil {
+			return ""
+		}
+		return options.TaskID
+	}())
 	if err := checkOptions(options); err != nil {
 		return types.ErrorResponse(-400, err.Error())
 	}
@@ -25,9 +32,9 @@ func RunPython3Code(code string, preload string, options *runner_types.RunnerOpt
 	}
 
 	if !static.GetDifySandboxGlobalConfigurations().EnablePreload {
-	    preload = ""
+		preload = ""
 	}
-	
+
 	timeout := time.Duration(
 		static.GetDifySandboxGlobalConfigurations().WorkerTimeout * int(time.Second),
 	)
@@ -37,6 +44,7 @@ func RunPython3Code(code string, preload string, options *runner_types.RunnerOpt
 		code, timeout, nil, preload, options,
 	)
 	if err != nil {
+		log.Error("RunPython3Code 执行失败: %v", err)
 		return types.ErrorResponse(-500, err.Error())
 	}
 

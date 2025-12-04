@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/langgenius/dify-sandbox/internal/utils/log"
+
 	"github.com/google/uuid"
 	"github.com/langgenius/dify-sandbox/internal/core/runner"
 	"github.com/langgenius/dify-sandbox/internal/core/runner/types"
@@ -37,8 +39,10 @@ func (p *PythonRunner) Run(
 	// initialize the environment
 	untrusted_code_path, key, err := p.InitializeEnvironment(code, preload, options)
 	if err != nil {
+		log.Error("InitializeEnvironment 失败: %v", err)
 		return nil, nil, nil, err
 	}
+	log.Info("初始化完成: 脚本=%s", untrusted_code_path)
 
 	// capture the output
 	output_handler := runner.NewOutputCaptureRunner()
@@ -53,6 +57,7 @@ func (p *PythonRunner) Run(
 	if options != nil && options.TaskID != "" {
 		workdir = fmt.Sprintf("/tmp/%s", options.TaskID)
 	}
+	log.Info("执行配置: 工作目录=%s, 库路径=%s, 启用网络=%v", workdir, LIB_PATH, options != nil && options.EnableNetwork)
 	cmd := exec.Command(
 		configuration.PythonPath,
 		untrusted_code_path,
@@ -62,6 +67,7 @@ func (p *PythonRunner) Run(
 	)
 	cmd.Env = []string{}
 	cmd.Dir = LIB_PATH
+	log.Debug("将要执行命令: path=%s, dir=%s, args=%v", cmd.Path, cmd.Dir, cmd.Args)
 
 	if configuration.Proxy.Socks5 != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("HTTPS_PROXY=%s", configuration.Proxy.Socks5))
@@ -81,10 +87,12 @@ func (p *PythonRunner) Run(
 				strings.Trim(strings.Join(strings.Fields(fmt.Sprint(configuration.AllowedSyscalls)), ","), "[]"),
 			),
 		)
+		log.Info("启用自定义 ALLOWED_SYSCALLS 覆盖: 数量=%d", len(configuration.AllowedSyscalls))
 	}
 
 	err = output_handler.CaptureOutput(cmd)
 	if err != nil {
+		log.Error("捕获输出失败: %v", err)
 		return nil, nil, nil, err
 	}
 
@@ -163,6 +171,7 @@ func (p *PythonRunner) InitializeEnvironment(code string, preload string, option
 	}
 	err = os.WriteFile(untrusted_code_path, []byte(code), 0755)
 	if err != nil {
+		log.Error("写入脚本失败: %v", err)
 		return "", "", err
 	}
 
@@ -171,6 +180,7 @@ func (p *PythonRunner) InitializeEnvironment(code string, preload string, option
 		workdir := path.Join(LIB_PATH, "tmp", options.TaskID)
 		_ = os.MkdirAll(workdir, 0770)
 		_ = os.Chown(workdir, static.SANDBOX_USER_UID, static.SANDBOX_GROUP_ID)
+		log.Info("已准备工作目录: %s, uid=%d, gid=%d", workdir, static.SANDBOX_USER_UID, static.SANDBOX_GROUP_ID)
 	}
 
 	return untrusted_code_path, encoded_key, nil

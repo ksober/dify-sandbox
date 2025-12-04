@@ -5,6 +5,7 @@ import (
 	runner_types "github.com/langgenius/dify-sandbox/internal/core/runner/types"
 	"github.com/langgenius/dify-sandbox/internal/service"
 	"github.com/langgenius/dify-sandbox/internal/types"
+	"github.com/langgenius/dify-sandbox/internal/utils/log"
 )
 
 func RunSandboxController(c *gin.Context) {
@@ -15,6 +16,7 @@ func RunSandboxController(c *gin.Context) {
 		EnableNetwork bool   `json:"enable_network" form:"enable_network"`
 		TaskID        string `json:"task_id" form:"task_id"`
 	}) {
+		log.Info("收到运行请求: 语言=%s, 启用网络=%v, task_id=%s", req.Language, req.EnableNetwork, req.TaskID)
 		switch req.Language {
 		case "python3":
 			c.JSON(200, service.RunPython3Code(req.Code, req.Preload, &runner_types.RunnerOptions{
